@@ -13,7 +13,6 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -23,24 +22,27 @@ import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.text.DateFormat;
+import java.util.Date;
 
 
 public class MainActivity extends Activity {
 
     EditText cityName;
     TextView resultTextView;
+    private WeatherAdapter adapter;
 
     public void findWeather(View view) {
         Log.i("CityName", cityName.getText().toString());
 
-        InputMethodManager  mgr = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        InputMethodManager mgr = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         mgr.hideSoftInputFromWindow(cityName.getWindowToken(), 0);
 
         try {
             String encodedCityName = URLEncoder.encode(cityName.getText().toString(), "UTF-8");
 
             DownloadTask task = new DownloadTask();
-            task.execute("http://api.openweathermap.org/data/2.5/weather?q=" + encodedCityName + ",us&units=metric&APPID=382c108de9814dc1715cd1145b8875d6");
+            task.execute("http://api.openweathermap.org/data/2.5/weather?q=" + encodedCityName + ",us&units=imperial&APPID=382c108de9814dc1715cd1145b8875d6");
 
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
@@ -55,7 +57,7 @@ public class MainActivity extends Activity {
         cityName = (EditText) findViewById(R.id.cityName);
         resultTextView = (TextView) findViewById(R.id.resultTextView);
 
-
+        adapter = new WeatherAdapter(this);
     }
 
     @Override
@@ -83,6 +85,7 @@ public class MainActivity extends Activity {
     }
 
     public class DownloadTask extends AsyncTask<String, Void, String> {
+
 
         @Override
         protected String doInBackground(String... urls) {
@@ -118,43 +121,30 @@ public class MainActivity extends Activity {
         protected void onPostExecute(String result) {
             super.onPostExecute(result);
 
-            Log.i("Website Content", result);
+//            Log.i("Website Content", result);
             try {
-
+                DateFormat df = DateFormat.getTimeInstance();
                 String message = "";
                 JSONObject jsonObject = new JSONObject(result);
+                String all = jsonObject.toString();
+                Log.i("ALL AGAIN", all);
 
-                String weather = jsonObject.getString("weather");
-             //   String weatherTemperature = jsonObject.getString("main");
+                String sunrise = df.format(new Date(jsonObject.getJSONObject("sys").getLong("sunrise") * 1000).getTime());
+                String sunset = df.format(new Date(jsonObject.getJSONObject("sys").getLong("sunset") * 1000).getTime());
+                Long pressure = jsonObject.getJSONObject("main").getLong("pressure");
+                Long humidity = jsonObject.getJSONObject("main").getLong("humidity");
+                String temp = jsonObject.getJSONObject("main").getString("temp");
+                String maxTemp = jsonObject.getJSONObject("main").getString("temp_max");
+                String minTemp = jsonObject.getJSONObject("main").getString("temp_min");
+                String description = jsonObject.getJSONArray("weather").getJSONObject(0).getString("description");
+                String icon = jsonObject.getJSONArray("weather").getJSONObject(0).getString("icon");
+                icon = Data.ICON_ADDR + icon + ".png";
 
-                Log.i("Weather LOOKS LIKE", weather);
-        //        Log.i("Weather TEMPERATURE C", weatherTemperature);
 
-                JSONArray arrWeather = new JSONArray(weather);
-         //       JSONArray arrWeatherTemperature = new JSONArray(weatherTemperature);
+                message += description + "\r\nTemp " + temp + "°F \r\n Need to download image - " + icon + " \r\nMin "
+                        + minTemp + "°F\r\nMax " + maxTemp + "°F\r\n" + pressure + " Pressure\r\n" + " Humidity " + humidity + "%"
+                        + "\r\n Sunrise " + sunrise + " \r\n" + "Sunset " + sunset;
 
-                for (int i = 0; i < arrWeather.length(); i++) {
-
-                    JSONObject jsonPart = arrWeather.getJSONObject(i);
-                    String main ;
-                    String description ;
-                    main = jsonPart.getString("main");
-                    description = jsonPart.getString("description");
-                    if (main != "" && description != "" ) {
-                        message += main + " : \r\n" + description ;
-                    }
-                }
-
-//                for (int i = 0; i < arrWeatherTemperature.length(); i++) {
-//
-//                    JSONObject jsonPart = arrWeatherTemperature.getJSONObject(i);
-//                    String temperature ;
-//                    temperature = jsonPart.getString("temp");
-//                    if (temperature != ""  ) {
-//                        message += temperature  ;
-//                    }
-//                }
-//
 
                 if (message != "") {
                     resultTextView.setText(message);
